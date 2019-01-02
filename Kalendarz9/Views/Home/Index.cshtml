@@ -79,11 +79,13 @@
                     url: "/home/GetMeetings",
                     success: function (data) {
                         $.each(data, function (i, v) {
+                            //wyciaganie z bazy wszystkich spotkań.
                             meetings.push({
+                                meetingID: v.MeetingID,
                                 title: v.ClientName,
                                 description: v.MeetingType,
                                 start: moment(v.Start),
-                                end: v.End != null ? moment(v.End) : null,
+                                end: moment(v.Start).add(1,'hours'),
                                 color: v.ThemeColor,
                                 allDay: v.IsFullDay
 
@@ -123,15 +125,15 @@
                     },
                     selectable: true,
                     select: function (start,end) {
-                        $('#startHour').append(start);
+                       // $('#startHour').append(start);
                         selectedMeeting = {
                             MeetingID: 0,
                             ClientName: '',
                             MeetingType: '',
                             start: start,
-                            end: end,
+                            end: moment(start).add(1,'hours'),
                             allDay: false,
-                            color: ''
+                            color: 'green'
 
                         };
                         openAddEditForm();
@@ -184,7 +186,8 @@
                     $('#txtClientName').val(selectedMeeting.ClientName);
                     $('#txtStart').val(selectedMeeting.start.format("DD/MM/YYYY HH:mm A"));
                     $('#txtMeetingType').val(selectedMeeting.description);
-                    $('#ddThemeColor').val(selectedMeeting.color);
+                    selectedMeeting.color = 'green';
+                    selectedMeeting.end = moment(selectedMeeting.start).add(1, 'hours');
                 }
                 $('#myModal').modal('hide');
                 $('#myModalSave').modal();
@@ -229,7 +232,7 @@
                     MeetingID: $('#hdMeetingID').val(),
                     ClientName: $('#txtClientName').val().trim(),
                     Start: $('#txtStart').val().trim(),
-                    End: $('#txtStart').add(1, 'H').val().trim(),
+                    End: $('#txtStart').val().trim(),
                     MeetingType: $('#txtMeetingType').val(),
                     ThemeColor: 'green',
                     IsFullDay: 'false',

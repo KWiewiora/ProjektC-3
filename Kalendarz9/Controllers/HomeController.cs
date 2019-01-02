@@ -34,23 +34,29 @@ namespace Kalendarz9.Controllers
             var status = false;
             using (MeetingsEntities dc = new MeetingsEntities())
             {
+                var meetings = dc.Meetings.ToList();
+                var lastID = meetings.Count;
                 if (m.MeetingID > 0)
                 {
+                    
+
                     //aktualizowanie spotkania
                     var v = dc.Meetings.Where(a => a.MeetingID == m.MeetingID).FirstOrDefault();
                     if (v != null)
                     {
+                        m.MeetingID = lastID + 1;
                         v.ClientName = m.ClientName;
                         v.MeetingType = m.MeetingType;
                         v.Start = m.Start;
                         v.End = m.End;
-                        v.ThemeColor = v.ThemeColor;
+                        v.ThemeColor = m.ThemeColor;
                         v.IsFullDay = m.IsFullDay;
                     }
 
                 }
                 else
                 {
+                    m.MeetingID = lastID + 1;
                     dc.Meetings.Add(m);
                 }
                 dc.SaveChanges();
