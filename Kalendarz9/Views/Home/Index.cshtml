@@ -1,6 +1,7 @@
-﻿
-@{
-    ViewBag.Title = "Home Page";
+﻿@{
+    ViewBag.Title = "AdminCalendar";
+    ViewBag.User = User.Identity.Name;
+
 }
 <div id="calendar"></div>
 
@@ -12,15 +13,12 @@
                 <h4 class="modal-title"><span id="meetingTitle"></span></h4>
             </div>
             <div class="modal-body">
-                <button id="btnDelete" class="btn btn-default btn-sm pull-right">
-                    <span class="glyphicon glyphicon-remove"></span> Usuń
-                </button>
 
 
                 <p id="pDetails"></p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zamknij</button>
             </div>
         </div>
     </div>
@@ -42,24 +40,31 @@
                     <div class="form-group">
                         <label>Początek spotkania</label>
                         <div class="input-group date" id="dtp1">
-                            <input type="text" id="txtStart" class="form-control" />
+                            <input type="text" id="txtStart" class="form-control" disabled/>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Typ spotkania</label>
-                        <textarea id="txtMeetingType" rows="3" class="form-control"></textarea>
+                        <!--<textarea id="txtMeetingType" rows="3" class="form-control"></textarea>-->
+                        <select name="txtMeetingType" id ="txtMeetingType" class="form-control">
+                            <option value="Manicure">Manicure</option>
+                            <option value="Pedicure">Pedicure</option>
+                            <option value="Rzęsy">Rzęsy</option>
+                        </select>
                     </div>
-                    <button type="button" id="btnSave" class="btn btn-success">Save</button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" id="btnSave" class="btn btn-success">Zapisz</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Zamknij okno</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
-<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet" />
-<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.print.css" rel="stylesheet" media="print" />
+<div id="proba"></div>
+<link href="~/Style/style.css" rel="stylesheet" />
+<link href="~/Style/fullcalendar.css" rel="stylesheet" />
+<link href="~/Style/fullcalendar.print.css rel="stylesheet" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css" rel="stylesheet" />
+
 
 @section Scripts{
     <script src='http://fullcalendar.io/js/fullcalendar-2.1.1/lib/moment.min.js'></script>
@@ -69,8 +74,11 @@
 
     <script>
         $(document).ready(function () {
+            var user = '@(ViewBag.User)';
+            var today = moment();
             var meetings = [];
             var selectedMeeting = null;
+            var color = 'green';
             FetchEventAndRenderCalendar();
             function FetchEventAndRenderCalendar() {
                 meetings = [];
@@ -78,30 +86,40 @@
                     type: "GET",
                     url: "/home/GetMeetings",
                     success: function (data) {
-                        $.each(data, function (i, v) {
-                            meetings.push({
-                                title: v.ClientName,
-                                description: v.MeetingType,
-                                start: moment(v.Start),
-                                end: v.End != null ? moment(v.End) : null,
-                                color: v.ThemeColor,
-                                allDay: v.IsFullDay
-
-                            });
-
-                        })
-
+                        if (user == "kisiel660@vp.pl") {
+                            $.each(data, function (i, v) {
+                                meetings.push({
+                                    title: v.ClientName,
+                                    description: v.MeetingType,
+                                    start: moment(v.Start),
+                                    end: v.End != null ? moment(v.End) : null,
+                                    color: v.ThemeColor,
+                                    allDay: v.IsFullDay
+                                });
+                            })
+                        }
+                        else {
+                            $.each(data, function (i, v) {
+                                meetings.push({
+                                    title: '',
+                                    description: '',
+                                    start: moment(v.Start),
+                                    end: v.End != null ? moment(v.End) : null,
+                                    color: 'red',
+                                    allDay: v.IsFullDay
+                                });
+                            })
+                        }
                         GenerateCalender(meetings);
                     },
                     error: function (error) {
                         alert('failed');
                     }
-
                 })
             }
-
             function GenerateCalender(meetings) {
                 $('#calendar').fullCalendar('destroy');
+                
                 $('#calendar').fullCalendar({
                     contentHeight: 400,
                     lang: 'pl',
@@ -115,27 +133,31 @@
                         left: 'prev,next today',
                         center: 'title',
                         right: 'month,basicWeek,basicDay,agenda'
-
                     },
                     dayClick: function (date) {
                         $('#calendar').fullCalendar('gotoDate', date.format());
                         $('#calendar').fullCalendar('changeView', 'agendaDay', date.format());
                     },
                     selectable: true,
-                    select: function (start,end) {
-                        $('#startHour').append(start);
-                        selectedMeeting = {
-                            MeetingID: 0,
-                            ClientName: '',
-                            MeetingType: '',
-                            start: start,
-                            end: end,
-                            allDay: false,
-                            color: ''
+                    select: function (start, end) {
+                        if (start > today) {
+                            if (start.format("HH") != "00" && start.format("mm") == "00" && start.format("HH") != "19") {
+                                selectedMeeting = {
+                                    MeetingID: 0,
+                                    ClientName: '',
+                                    MeetingType: '',
+                                    start: start,
+                                    end: end,
+                                    allDay: false,
+                                    color: ''
+                                };
+                                openAddEditForm();
+                                $('#calendar').fullCalendar('unselect');
+                            }
+                        }
 
-                        };
-                        openAddEditForm();
-                        $('#calendar').fullCalendar('unselect'); 
+                        
+                        
                     },
                     eventLimit: true,
                     eventColor: '#378006',
@@ -154,27 +176,6 @@
                     }
                 })
             }
-            $('btnDelete').click(function () {
-                //Otwarcie modalu do usunięcia dla admina
-                if (selectedEvent != null && confirm('Are you sure?')) {
-                    $.ajax({
-                        type: "POST",
-                        url: '/home/DeleteEvent',
-                        data: { 'eventID': selectedEvent.eventID },
-                        success: function (data) {
-                            if (data.status) {
-                                //Refresh the calender
-                                FetchEventAndRenderCalendar();
-                                $('#myModal').modal('hide');
-                            }
-                        },
-                        error: function () {
-                            alert('Failed');
-                        }
-                    })
-                }
-            });
-
             $('#dtp1, #dtp2').datetimepicker({
                 format: 'DD/MM/YYYY HH:mm A'
             });
@@ -189,17 +190,13 @@
                 $('#myModal').modal('hide');
                 $('#myModalSave').modal();
             }
-            $('#btnEdit').click(function () {
-                //Otwarcie modalu do edycji dla admina
-                openAddEditForm();
-            });
             $('#btnDelete').click(function () {
                 //Otwarcie modalu do usunięcia dla admina
                 if (selectedMeeting != null && confirm('Czy na pewno?')) {
                     $.ajax({
                         type: "POST",
                         url: '/home/DeleteMeeting',
-                        data: { 'eventID': selectedMeeting.meetingID },
+                        data: { 'MeetingID': selectedMeeting.MeetingID },
                         success: function (data) {
                             if (data.status) {
                                 //Refresh the calender
@@ -213,7 +210,6 @@
                     })
                 }
             });
-
             $('#btnSave').click(function () {
                 //Walidacja/
                 if ($('#txtClientName').val().trim() == "") {
@@ -224,14 +220,13 @@
                     alert('Wymagany czas');
                     return;
                 }
-
                 var data = {
                     MeetingID: $('#hdMeetingID').val(),
                     ClientName: $('#txtClientName').val().trim(),
                     Start: $('#txtStart').val().trim(),
-                    End: $('#txtStart').add(1, 'H').val().trim(),
+                    End: $('#txtStart').val().trim(),
                     MeetingType: $('#txtMeetingType').val(),
-                    ThemeColor: 'green',
+                    ThemeColor: color,
                     IsFullDay: 'false',
                 }
                 SaveMeeting(data);
@@ -254,6 +249,5 @@
                 })
             }
         });
-
     </script>
 }

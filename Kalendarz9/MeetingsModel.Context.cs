@@ -26,5 +26,6 @@ namespace Kalendarz9
         }
     
         public virtual DbSet<Meeting> Meetings { get; set; }
+        public object Occupied { get; internal set; }
     }
 }

@@ -1,17 +1,254 @@
 ﻿@{
-    ViewBag.Title = "Contact";
+    ViewBag.Title = "UserCalendar";
 }
-<h2>@ViewBag.Title.</h2>
-<h3>@ViewBag.Message</h3>
+<div id="calendar"></div>
 
-<address>
-    One Microsoft Way<br />
-    Redmond, WA 98052-6399<br />
-    <abbr title="Phone">P:</abbr>
-    425.555.0100
-</address>
+<div id="myModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><span id="meetingTitle"></span></h4>
+            </div>
+            <div class="modal-body">
+                <button id="btnDelete" class="btn btn-default btn-sm pull-right">
+                    <span class="glyphicon glyphicon-remove"></span> Usuń
+                </button>
 
-<address>
-    <strong>Support:</strong>   <a href="mailto:Support@example.com">Support@example.com</a><br />
-    <strong>Marketing:</strong> <a href="mailto:Marketing@example.com">Marketing@example.com</a>
-</address>
+
+                <p id="pDetails"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="myModalSave" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Zapisz się na wizytę</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <input type="hidden" id="hdMeetingID" value="0" />
+                    <div class="form-group">
+                        <label>Godność klienta</label>
+                        <input type="text" id="txtClientName" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Początek spotkania</label>
+                        <div class="input-group date" id="dtp1">
+                            <input type="text" id="txtStart" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Typ spotkania</label>
+                        <textarea id="txtMeetingType" rows="3" class="form-control"></textarea>
+                    </div>
+                    <button type="button" id="btnSave" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="proba"></div>
+<link href="~/Style/style.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.print.css" rel="stylesheet" media="print" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css" rel="stylesheet" />
+
+
+@section Scripts{
+    <script src='http://fullcalendar.io/js/fullcalendar-2.1.1/lib/moment.min.js'></script>
+    <script src='http://fullcalendar.io/js/fullcalendar-2.1.1/fullcalendar.min.js'></script>
+    <script src="http://fullcalendar.io/js/fullcalendar-2.1.1/lang/pl.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            var meetings = [];
+            var selectedMeeting = null;
+            FetchEventAndRenderCalendar();
+            function FetchEventAndRenderCalendar() {
+                meetings = [];
+                $.ajax({
+                    type: "GET",
+                    url: "/home/GetMeetings",
+                    success: function (data) {
+                        $.each(data, function (i, v) {
+                            meetings.push({
+                                title: v.ClientName,
+                                description: v.MeetingType,
+                                start: moment(v.Start),
+                                end: v.End != null ? moment(v.End) : null,
+                                color: v.ThemeColor,
+                                allDay: v.IsFullDay
+                            });
+                        })
+                        GenerateCalender(meetings);
+                    },
+                    error: function (error) {
+                        alert('failed');
+                    }
+                })
+            }
+            function GenerateCalender(meetings) {
+                $('#calendar').fullCalendar('destroy');
+
+                $('#calendar').fullCalendar({
+                    contentHeight: 400,
+                    lang: 'pl',
+                    defaultDate: new Date(),
+                    timeFormat: 'h(:mm)a',
+                    weekends: false,
+                    minTime: "09:00:00",
+                    maxTime: "19:01:00",
+                    allDaySlot: false,
+                    header: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'month,basicWeek,basicDay,agenda'
+                    },
+                    dayClick: function (date) {
+                        $('#calendar').fullCalendar('gotoDate', date.format());
+                        $('#calendar').fullCalendar('changeView', 'agendaDay', date.format());
+                    },
+                    selectable: true,
+                    select: function (start, end) {
+                        if (start.format("HH") != "00") {
+                            $('#proba').append('');
+                            selectedMeeting = {
+                                MeetingID: 0,
+                                ClientName: '',
+                                MeetingType: '',
+                                start: start,
+                                end: end,
+                                allDay: false,
+                                color: ''
+                            };
+                            openAddEditForm();
+                            $('#calendar').fullCalendar('unselect');
+                        }
+
+
+                    },
+                    eventLimit: true,
+                    eventColor: '#378006',
+                    events: meetings,
+                    eventClick: function (calMeeting, jsMeeting, view) {
+                        selectedMeeting = calMeeting;
+                        $('#myModal #meetingTitle').text(calMeeting.title);
+                        var $MeetingType = $('<div/>');
+                        $MeetingType.append($('<p/>').html('<b>Start: </b>' + calMeeting.start.format("DD-MMM-YYYY HH:mm a")));
+                        if (calMeeting.end != null) {
+                            $MeetingType.append($('<p/>').html('<b>Koniec: </b>' + calMeeting.end.format("DD-MMM-YYYY HH:mm a")));
+                        }
+                        $MeetingType.append($('<p/>').html('<b>Wizyta na:</b>' + calMeeting.description));
+                        $('#myModal #pDetails').empty().html($MeetingType);
+                        $('#myModal').modal('show');
+                    }
+                })
+            }
+            $('btnDelete').click(function () {
+                //Otwarcie modalu do usunięcia dla admina
+                if (selectedEvent != null && confirm('Are you sure?')) {
+                    $.ajax({
+                        type: "POST",
+                        url: '/home/DeleteEvent',
+                        data: { 'eventID': selectedEvent.eventID },
+                        success: function (data) {
+                            if (data.status) {
+                                //Refresh the calender
+                                FetchEventAndRenderCalendar();
+                                $('#myModal').modal('hide');
+                            }
+                        },
+                        error: function () {
+                            alert('Failed');
+                        }
+                    })
+                }
+            });
+            $('#dtp1, #dtp2').datetimepicker({
+                format: 'DD/MM/YYYY HH:mm A'
+            });
+            function openAddEditForm() {
+                if (selectedMeeting != null) {
+                    $('#hdMeetingID').val(selectedMeeting.MeetingID);
+                    $('#txtClientName').val(selectedMeeting.ClientName);
+                    $('#txtStart').val(selectedMeeting.start.format("DD/MM/YYYY HH:mm A"));
+                    $('#txtMeetingType').val(selectedMeeting.description);
+                    $('#ddThemeColor').val(selectedMeeting.color);
+                }
+                $('#myModal').modal('hide');
+                $('#myModalSave').modal();
+            }
+            $('#btnEdit').click(function () {
+                //Otwarcie modalu do edycji dla admina
+                openAddEditForm();
+            });
+            $('#btnDelete').click(function () {
+                //Otwarcie modalu do usunięcia dla admina
+                if (selectedMeeting != null && confirm('Czy na pewno?')) {
+                    $.ajax({
+                        type: "POST",
+                        url: '/home/DeleteMeeting',
+                        data: { 'eventID': selectedMeeting.meetingID },
+                        success: function (data) {
+                            if (data.status) {
+                                //Refresh the calender
+                                FetchEventAndRenderCalendar();
+                                $('#myModal').modal('hide');
+                            }
+                        },
+                        error: function () {
+                            alert('Nie udalo sie');
+                        }
+                    })
+                }
+            });
+            $('#btnSave').click(function () {
+                //Walidacja/
+                if ($('#txtClientName').val().trim() == "") {
+                    alert('Wymagana godność klienta');
+                    return;
+                }
+                if ($('#txtStart').val().trim() == "") {
+                    alert('Wymagany czas');
+                    return;
+                }
+                var data = {
+                    MeetingID: $('#hdMeetingID').val(),
+                    ClientName: $('#txtClientName').val().trim(),
+                    Start: $('#txtStart').val().trim(),
+                    End: $('#txtStart').val().trim(),
+                    MeetingType: $('#txtMeetingType').val(),
+                    ThemeColor: 'green',
+                    IsFullDay: 'false',
+                }
+                SaveMeeting(data);
+            });
+            function SaveMeeting(data) {
+                $.ajax({
+                    type: "POST",
+                    url: '/home/SaveMeeting',
+                    data: data,
+                    success: function (data) {
+                        if (data.status) {
+                            //Odświeżanie kalendarza
+                            FetchEventAndRenderCalendar();
+                            $('#myModalSave').modal('hide');
+                        }
+                    },
+                    error: function () {
+                        alert('Failed');
+                    }
+                })
+            }
+        });
+    </script>
+}

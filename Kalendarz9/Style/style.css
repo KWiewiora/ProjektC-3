@@ -1,0 +1,13 @@
+﻿.fc-time-grid-container .fc-scroller{
+    height: auto !important;
+}
+.body-content {
+    margin-top: 3em;
+}
+.form-horizontal .form-group {
+    margin-right: auto !important;
+    margin-left: auto !important;
+}
+.fc-time-grid-container, .fc-time-grid {
+    height: auto !important;
+}
